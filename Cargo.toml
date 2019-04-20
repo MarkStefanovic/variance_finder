@@ -1,0 +1,18 @@
+cargo-features = ["edition"]
+
+[package]
+name = "variance_finder"
+version = "0.1.0"
+authors = ["Mark Stefanovic <mark.stefanovic@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+itertools = "0.8"
+
+[dependencies.pyo3]
+version = "0.6.0"
+features = ["extension-module"]
+
+[lib]
+name = "variance_finder"
+crate-type = ["cdylib"]
