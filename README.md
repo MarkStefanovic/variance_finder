@@ -1,7 +1,12 @@
 # Purpose
-variance_finder is a Python module written in Rust to quickly find combinations
+variance_finder is a Python package written in Rust to quickly find combinations
 of items in a list that add up to a specified total and return their indices so 
 they can be matched against their original rows.
+
+# Installation
+```bash
+pip install variance_finder
+```
 
 # Example
 ```python
