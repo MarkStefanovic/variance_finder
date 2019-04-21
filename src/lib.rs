@@ -4,12 +4,14 @@ extern crate pyo3;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use itertools::Itertools;
+use rayon::prelude::*;
 
 
 #[pymodule]
 /// Module containing utility function for finding accounting variances
 fn variance_finder(_py: Python, module: &PyModule) -> PyResult<()> {
     module.add_wrapped(wrap_pyfunction!(find_matches))?;
+    module.add_wrapped(wrap_pyfunction!(find_multiple_matches))?;
     Ok(())
 }
 
@@ -30,7 +32,6 @@ fn find_matches(
     max_iterations: u32,
     max_matches: usize,
 ) -> PyResult<Vec<Vec<usize>>> {
-//) -> PyResult<Vec<Vec<(usize, f32)>>> {
     let true_fuzz: f32;
     if fuzz.abs() < 0.0001 {
         true_fuzz = 0.0001;
@@ -70,6 +71,34 @@ fn find_matches(
     Ok(extract_indices(matches))
 }
 
+#[pyfunction]
+/// Given a list of floats, and a list of totals to find, find combinations of items that match each total, and return their indices.
+///
+/// This function runs in parallel for each total, so it is significantly faster than running
+/// find_matches multiple times for multiple totals.
+///
+/// # Arguments
+///
+/// * `items` - List of floats to match against
+/// * `totals` - List of totals to match against
+/// * `fuzz` - Consider matches +/- this amount
+/// * `max_iterations` - int value indicating the max iterations to try when searching for matches
+/// * `max_matches`- int value indicating that the search should cease once this number of matches are found
+fn find_multiple_matches(
+    items: Vec<f32>,
+    totals: Vec<f32>,
+    fuzz: f32,
+    max_iterations: u32,
+    max_matches: usize,
+) -> PyResult<Vec<Vec<Vec<usize>>>> {
+    let results: Vec<Vec<Vec<usize>>> =
+        totals.par_iter()
+            .map(|&total| find_matches(items.clone(), total, fuzz, max_iterations, max_matches).unwrap())
+            .collect();
+    Ok(results)
+}
+
+
 fn extract_indices(matches: Vec<Vec<(usize, f32)>>) -> Vec<Vec<usize>> {
     matches
         .iter()
@@ -79,15 +108,28 @@ fn extract_indices(matches: Vec<Vec<(usize, f32)>>) -> Vec<Vec<usize>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::find_matches;
+    use super::*;
 
     #[test]
-    fn test_combinations() {
+    fn test_find_matches() {
         let items: Vec<f32> = (0..100).map(|i| i as f32).collect();
         let actual = find_matches(items, 42.0, 0.1, 1_000_000, 5);
         let expected: Vec<Vec<usize>> = vec![
             vec![42], vec![1, 41], vec![2, 40], vec![3, 39], vec![4, 38]
         ];
         assert_eq!(actual.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_find_multiple_matches() {
+        let items: Vec<f32> = (0..100).map(|i| i as f32).collect();
+        let totals: Vec<f32> = vec![42.1, -5.2, 1.3];
+        let actual = find_multiple_matches(items, totals, 1.4, 1_000_000, 5);
+        let expected: Vec<Vec<Vec<usize>>> = vec![
+            vec![vec![41], vec![42], vec![43], vec![1, 40], vec![1, 41]],
+            vec![],
+            vec![vec![1], vec![2]]
+        ];
+        assert_eq!(expected, actual.unwrap());
     }
 }

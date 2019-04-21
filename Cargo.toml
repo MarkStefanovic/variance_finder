@@ -2,12 +2,13 @@ cargo-features = ["edition"]
 
 [package]
 name = "variance_finder"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Mark Stefanovic <mark.stefanovic@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 itertools = "0.8"
+rayon = "1.0.3"
 
 [dependencies.pyo3]
 version = "0.6.0"
